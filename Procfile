@@ -1,1 +1,1 @@
-web: github-webhooks
+web: go run app.go

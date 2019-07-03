@@ -25,7 +25,7 @@
 #   unused-packages = true
 
 [metadata.heroku]
-  root-package = "github-weebhooks"
+  root-package = "github-webhooks"
   go-version = "1.12.6"
   install = [ "./..." ]
 

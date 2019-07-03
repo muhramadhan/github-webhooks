@@ -112,5 +112,5 @@ func main() {
 	router.GET("/", Index)
 	router.GET("/hello/:name", Hello)
 	router.POST("/payload", handlers)
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":", router))
 }

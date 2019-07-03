@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/go-playground/webhooks.v5/github"
@@ -107,10 +108,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func main() {
+	port := ":" + os.Getenv("PORT")
 	router := httprouter.New()
 	fmt.Println("Running ...")
 	router.GET("/", Index)
 	router.GET("/hello/:name", Hello)
 	router.POST("/payload", handlers)
-	log.Fatal(http.ListenAndServe(":", router))
+	log.Fatal(http.ListenAndServe(port, router))
 }

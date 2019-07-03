@@ -1,1 +1,1 @@
-web: github-webhooks
+web: github-webhooks --port $PORT --host 0.0.0.0 

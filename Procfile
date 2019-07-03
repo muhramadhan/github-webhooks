@@ -1,1 +1,1 @@
-web: github-webhooks -port=8080
+web: github-webhooks

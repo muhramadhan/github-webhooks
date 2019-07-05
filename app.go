@@ -6,10 +6,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/go-playground/webhooks.v5/github"
 )
+
+var regexProjectKey = "\\[[A-Z]*\\-[0-9]+\\]"
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Welcome!\n")
@@ -42,13 +46,10 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	case github.CreatePayload:
 		createPayload := payload.(github.CreatePayload)
-		enc, err := json.MarshalIndent(createPayload, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
+		branchName := createPayload.Ref
+		reg, _ := regexp.Compile(regexProjectKey)
+		issueKey := strings.Replace(strings.Replace(reg.FindString(branchName), "[", "", -1), "]", "", -1)
 		fmt.Println("New Branch")
-		fmt.Fprintf(w, string(enc))
 
 	case github.PullRequestPayload:
 		pullRequest := payload.(github.PullRequestPayload)

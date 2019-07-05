@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/go-playground/webhooks.v5/github"
 )
@@ -24,6 +25,12 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	tp := jira.BasicAuthTransport{
+		Username: "ramadhanm1998@gmail.com",
+		Password: "icB26nXqVx90BRVTrxKKB68F",
+	}
+	client, _ := jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
+
 	hook, _ := github.New(github.Options.Secret("secret"))
 	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
 	if err != nil {
@@ -49,6 +56,12 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		branchName := createPayload.Ref
 		reg, _ := regexp.Compile(regexProjectKey)
 		issueKey := strings.Replace(strings.Replace(reg.FindString(branchName), "[", "", -1), "]", "", -1)
+		if createPayload.RefType == "branch" {
+			transitions, _, _ := client.Issue.GetTransitions(issueKey)
+			for transition := range transitions {
+
+			}
+		}
 		fmt.Println("New Branch")
 
 	case github.PullRequestPayload:

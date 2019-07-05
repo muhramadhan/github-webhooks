@@ -39,6 +39,16 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Println("Release")
 		fmt.Fprintf(w, string(enc))
 
+	case github.CreatePayload:
+		createPayload := payload.(github.CreatePayload)
+		enc, err := json.MarshalIndent(createPayload, "", "  ")
+		if err != nil {
+			fmt.Fprint(w, "invalidRequest")
+			return
+		}
+		fmt.Println("New Branch")
+		fmt.Fprintf(w, string(enc))
+
 	case github.PullRequestPayload:
 		pullRequest := payload.(github.PullRequestPayload)
 		// Do whatever you want from here...

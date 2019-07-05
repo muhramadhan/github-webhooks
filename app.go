@@ -63,9 +63,19 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		// Do whatever you want from here...
 		title := pullRequest.PullRequest.Title
 		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
-		issue, _, err := jiraClient.Issue.Get(issueKey, nil)
-		fmt.Println("Pull Request", issue)
-		enc, err := json.MarshalIndent(pullRequest, "", "  ")
+		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
+		var transID string
+		if pullRequest.Action == "open" {
+			for _, transition := range transitions {
+				if transition.To.StatusCategory.Name == "In Progress" {
+					transID = transition.ID
+				}
+			}
+		}
+		res, err := jiraClient.Issue.DoTransition(issueKey, transID)
+		// issue, _, err := jiraClient.Issue.Get(issueKey, nil)
+		// fmt.Println("Pull Request", issue)
+		enc, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
 			fmt.Fprint(w, "invalidRequest")
 			return

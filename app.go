@@ -21,12 +21,13 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	hook, _ := github.New(github.Options.Secret("secret"))
-	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent)
+	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
 		}
 	}
+
 	switch payload.(type) {
 	case github.ReleasePayload:
 		release := payload.(github.ReleasePayload)

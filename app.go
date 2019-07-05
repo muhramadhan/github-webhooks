@@ -6,10 +6,25 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/go-playground/webhooks.v5/github"
 )
+
+var regexIssueKey = "\\[[A-Z]*\\-[0-9]+\\]"
+var jiraClient *jira.Client
+
+func InitJiraClient() {
+	tp := jira.BasicAuthTransport{
+		Username: "ramadhanm1998@gmail.com",
+		Password: "icB26nXqVx90BRVTrxKKB68F",
+	}
+
+	jiraClient, _ = jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
+}
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Welcome!\n")
@@ -27,6 +42,10 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			// ok event wasn;t one of the ones asked to be parsed
 		}
 	}
+
+	//Regex issue key
+	reg, _ := regexp.Compile(regexIssueKey)
+
 	switch payload.(type) {
 	case github.ReleasePayload:
 		release := payload.(github.ReleasePayload)
@@ -42,6 +61,10 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	case github.PullRequestPayload:
 		pullRequest := payload.(github.PullRequestPayload)
 		// Do whatever you want from here...
+		title := pullRequest.PullRequest.Title
+		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
+		issue, _, err := jiraClient.Issue.Get(issueKey, nil)
+		fmt.Println("Pull Request", issue)
 		enc, err := json.MarshalIndent(pullRequest, "", "  ")
 		if err != nil {
 			fmt.Fprint(w, "invalidRequest")

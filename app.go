@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -108,13 +109,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
 			transitions, _, _ := jiraClient.Issue.GetTransitions(issueKey)
-			BodyComment := fmt.Sprintf("Working Branch : [%s](%s)", createPayload.Ref, createPayload.Repository.HTMLURL+"/tree"+createPayload.Ref)
+			BodyComment := fmt.Sprintf("Working Branch : %s", createPayload.Ref, createPayload.Repository.HTMLURL+"/tree/"+createPayload.Ref)
 			for _, transition := range transitions {
 				if transition.To.Name == "In Progress" {
 					jiraClient.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
 					comment := jira.Comment{
-            Body: BodyComment,
+						Body: BodyComment,
 					}
 					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}

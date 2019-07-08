@@ -54,6 +54,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	case github.CreatePayload:
 		createPayload := payload.(github.CreatePayload)
 		branchName := createPayload.Ref
+		fmt.Println(branchName)
 		reg, _ := regexp.Compile(regexProjectKey)
 		issueKey := strings.Replace(strings.Replace(reg.FindString(branchName), "[", "", -1), "]", "", -1)
 		issue, _, _ := client.Issue.Get(issueKey, nil)

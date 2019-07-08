@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 )
 
 var regexIssueKey = "\\[[A-Z]*\\-[0-9]+\\]"
+var regexIssueKeyBranch = "[A-Z]*\\-[0-9]+"
 var jiraClient *jira.Client
 
 func InitJiraClient() {
@@ -35,19 +35,20 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
 	hook, _ := github.New(github.Options.Secret("secret"))
-	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent)
+	payload, err := hook.Parse(r, github.PullRequestEvent, github.CreateEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
 		}
 	}
-
 	//Regex issue key
 	reg, _ := regexp.Compile(regexIssueKey)
 
 	switch payload.(type) {
-	case github.ReleasePayload:
+	case github.CreatePayload:
+		// regBranch, _ := regexp.Compile(regexIssueKeyBranch)
 		release := payload.(github.ReleasePayload)
 		// Do whatever you want from here...
 		enc, err := json.MarshalIndent(release, "", "  ")
@@ -63,23 +64,53 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		// Do whatever you want from here...
 		title := pullRequest.PullRequest.Title
 		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
+		if issueKey == "" {
+			return
+		}
+		fmt.Println("jiraClient = ", jiraClient)
 		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
+		if err != nil {
+			fmt.Println(err)
+		}
 		var transID string
 		if pullRequest.Action == "open" {
 			for _, transition := range transitions {
-				if transition.To.StatusCategory.Name == "In Progress" {
+				fmt.Println(transition.To.Name)
+				if transition.To.Name == "In Review" {
 					transID = transition.ID
 				}
 			}
+		} else if pullRequest.Action == "closed" {
+			if pullRequest.PullRequest.Merged {
+				for _, transition := range transitions {
+					if transition.To.Name == "Done" {
+						transID = transition.ID
+					}
+				}
+			} else {
+				for _, transition := range transitions {
+					if transition.To.Name == "In Progress" {
+						transID = transition.ID
+					}
+				}
+			}
 		}
-		res, err := jiraClient.Issue.DoTransition(issueKey, transID)
-		// issue, _, err := jiraClient.Issue.Get(issueKey, nil)
-		// fmt.Println("Pull Request", issue)
-		enc, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
+
+		if transID == "" {
 			return
 		}
+		res, err := jiraClient.Issue.DoTransition(issueKey, transID)
+		if err != nil {
+			fmt.Fprint(w, "invalidRequest pertama: ", err)
+			return
+		}
+		enc, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			fmt.Fprint(w, "invalidRequest kedua: ", err)
+			return
+		}
+		// issue, _, err := jiraClient.Issue.Get(issueKey, nil)
+		// fmt.Println("Pull Request", issue)
 
 		fmt.Println("Pull Request")
 		fmt.Fprintf(w, string(enc))
@@ -141,7 +172,9 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func main() {
-	port := ":" + os.Getenv("PORT")
+	// port := ":" + os.Getenv("PORT")
+	InitJiraClient()
+	port := ":8080"
 	router := httprouter.New()
 	fmt.Println("Running ...")
 	router.GET("/", Index)

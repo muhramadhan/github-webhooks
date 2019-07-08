@@ -113,6 +113,10 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				if transition.To.Name == "In Progress" {
 					jiraClient.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
+					comment := jira.Comment{
+						Body: "https://github.com/" + createPayload.Repository.FullName + branchName,
+					}
+					client.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 		}

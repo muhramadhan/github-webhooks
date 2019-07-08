@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -55,8 +54,8 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		createPayload := payload.(github.CreatePayload)
 		branchName := createPayload.Ref
 		fmt.Println(branchName)
-		reg, _ := regexp.Compile(regexProjectKey)
-		issueKey := strings.Replace(strings.Replace(reg.FindString(branchName), "[", "", -1), "]", "", -1)
+		splitedName := strings.Split(branchName, "_")
+		issueKey := splitedName[len(splitedName)-1]
 		issue, _, _ := client.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
 			transitions, _, _ := client.Issue.GetTransitions(issueKey)

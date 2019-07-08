@@ -72,6 +72,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	case github.PullRequestPayload:
 		fmt.Println("Pull Request")
 		pullRequest := payload.(github.PullRequestPayload)
+		fmt.Println(pullRequest)
 		reg, _ := regexp.Compile(regexProjectKey)
 		title := pullRequest.PullRequest.Title
 		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)

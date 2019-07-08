@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -114,7 +116,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 					jiraClient.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
 					comment := jira.Comment{
-            Body: BodyComment,
+						Body: BodyComment,
 					}
 					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
@@ -179,9 +181,9 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func main() {
-	// port := ":" + os.Getenv("PORT")
+	port := ":" + os.Getenv("PORT")
 	InitJiraClient()
-	port := ":8080"
+	//port := ":8080"
 	router := httprouter.New()
 	fmt.Println("Running ...")
 	router.GET("/", Index)

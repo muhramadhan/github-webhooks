@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
@@ -14,7 +13,18 @@ import (
 	"gopkg.in/go-playground/webhooks.v5/github"
 )
 
-var regexProjectKey = "\\[[A-Z]*\\-[0-9]+\\]"
+var regexIssueKey = "\\[[A-Z]*\\-[0-9]+\\]"
+var regexIssueKeyBranch = "[A-Z]*\\-[0-9]+"
+var jiraClient *jira.Client
+
+func InitJiraClient() {
+	tp := jira.BasicAuthTransport{
+		Username: "ramadhanm1998@gmail.com",
+		Password: "icB26nXqVx90BRVTrxKKB68F",
+	}
+
+	jiraClient, _ = jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
+}
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Welcome!\n")
@@ -25,68 +35,93 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	tp := jira.BasicAuthTransport{
-		Username: "hafizh203@gmail.com",
-		Password: "nwXanAF4FVQVToP4OjDN9808",
-	}
-	client, _ := jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
 
 	hook, _ := github.New(github.Options.Secret("secret"))
-	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
+	payload, err := hook.Parse(r, github.PullRequestEvent, github.CreateEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
 		}
 	}
+	//Regex issue key
+	reg, _ := regexp.Compile(regexIssueKey)
 
 	switch payload.(type) {
-	case github.ReleasePayload:
-		release := payload.(github.ReleasePayload)
+
+	case github.PullRequestPayload:
+		pullRequest := payload.(github.PullRequestPayload)
 		// Do whatever you want from here...
-		enc, err := json.MarshalIndent(release, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
+		title := pullRequest.PullRequest.Title
+		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
+		if issueKey == "" {
 			return
 		}
-		fmt.Println("Release")
-		fmt.Fprintf(w, string(enc))
+		fmt.Println("jiraClient = ", jiraClient)
+		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
+		if err != nil {
+			fmt.Println(err)
+		}
+		var transID string
+		if pullRequest.Action == "open" {
+			for _, transition := range transitions {
+				fmt.Println(transition.To.Name)
+				if transition.To.Name == "In Review" {
+					transID = transition.ID
+				}
+			}
+		} else if pullRequest.Action == "closed" {
+			if pullRequest.PullRequest.Merged {
+				for _, transition := range transitions {
+					if transition.To.Name == "Done" {
+						transID = transition.ID
+					}
+				}
+			} else {
+				for _, transition := range transitions {
+					if transition.To.Name == "In Progress" {
+						transID = transition.ID
+					}
+				}
+			}
+		}
 
+		if transID == "" {
+			return
+		}
+		_, err = jiraClient.Issue.DoTransition(issueKey, transID)
+		if err != nil {
+			fmt.Fprint(w, "invalidRequest pertama: ", err)
+			return
+		}
+		// enc, err := json.MarshalIndent(res, "", "  ")
+		// if err != nil {
+		// 	fmt.Fprint(w, "invalidRequest kedua: ", err)
+		// 	return
+		// }
+		// issue, _, err := jiraClient.Issue.Get(issueKey, nil)
+		// fmt.Println("Pull Request", issue)
 	case github.CreatePayload:
 		createPayload := payload.(github.CreatePayload)
 		branchName := createPayload.Ref
 		fmt.Println(branchName)
 		splitedName := strings.Split(branchName, "_")
 		issueKey := splitedName[len(splitedName)-1]
-		issue, _, _ := client.Issue.Get(issueKey, nil)
+		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
-			transitions, _, _ := client.Issue.GetTransitions(issueKey)
+			transitions, _, _ := jiraClient.Issue.GetTransitions(issueKey)
+			BodyComment := fmt.Sprintf("Working Branch : [%s](%s)", createPayload.Ref, createPayload.Repository.HTMLURL+"/tree"+createPayload.Ref)
 			for _, transition := range transitions {
 				if transition.To.Name == "In Progress" {
-					client.Issue.DoTransition(issue.ID, transition.ID)
+					jiraClient.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
 					comment := jira.Comment{
-						Body: "https://github.com/" + createPayload.Repository.FullName + branchName,
+						Body: BodyComment,
 					}
-					client.Issue.AddComment(issue.ID, &comment)
+					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 		}
 		fmt.Println("New Branch")
-
-	case github.PullRequestPayload:
-		fmt.Println("Pull Request")
-		pullRequest := payload.(github.PullRequestPayload)
-		reg, _ := regexp.Compile(regexProjectKey)
-		title := pullRequest.PullRequest.Title
-		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
-		issue, _, _ := client.Issue.Get(issueKey, nil)
-		transitions, _, _ := client.Issue.GetTransitions(issueKey)
-		for _, transition := range transitions {
-			if transition.To.Name == "In Review" {
-				client.Issue.DoTransition(issue.ID, transition.ID)
-				fmt.Println("Transition")
-			}
-		}
 
 	case github.PullRequestReviewPayload:
 		pullReqReview := payload.(github.PullRequestReviewPayload)
@@ -145,7 +180,9 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func main() {
-	port := ":" + os.Getenv("PORT")
+	// port := ":" + os.Getenv("PORT")
+	InitJiraClient()
+	port := ":8080"
 	router := httprouter.New()
 	fmt.Println("Running ...")
 	router.GET("/", Index)

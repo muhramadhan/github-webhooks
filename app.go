@@ -25,8 +25,8 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	tp := jira.BasicAuthTransport{
-		Username: "ramadhanm1998@gmail.com",
-		Password: "icB26nXqVx90BRVTrxKKB68F",
+		Username: "hafizh203@gmail.com",
+		Password: "nwXanAF4FVQVToP4OjDN9808",
 	}
 	client, _ := jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
 

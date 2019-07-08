@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+<<<<<<< HEAD
+=======
+	"os"
+>>>>>>> 9df72e7d811d1d7b3eec0889431ee3f12a8761cb
 	"regexp"
 	"strings"
 
@@ -13,6 +17,7 @@ import (
 	"gopkg.in/go-playground/webhooks.v5/github"
 )
 
+<<<<<<< HEAD
 var regexIssueKey = "\\[[A-Z]*\\-[0-9]+\\]"
 var regexIssueKeyBranch = "[A-Z]*\\-[0-9]+"
 var jiraClient *jira.Client
@@ -25,6 +30,9 @@ func InitJiraClient() {
 
 	jiraClient, _ = jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
 }
+=======
+var regexProjectKey = "\\[[A-Z]*\\-[0-9]+\\]"
+>>>>>>> 9df72e7d811d1d7b3eec0889431ee3f12a8761cb
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Welcome!\n")
@@ -35,16 +43,30 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+<<<<<<< HEAD
 
 	hook, _ := github.New(github.Options.Secret("secret"))
 	payload, err := hook.Parse(r, github.PullRequestEvent, github.CreateEvent)
+=======
+	tp := jira.BasicAuthTransport{
+		Username: "hafizh203@gmail.com",
+		Password: "nwXanAF4FVQVToP4OjDN9808",
+	}
+	client, _ := jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
+
+	hook, _ := github.New(github.Options.Secret("secret"))
+	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
+>>>>>>> 9df72e7d811d1d7b3eec0889431ee3f12a8761cb
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
 		}
 	}
+<<<<<<< HEAD
 	//Regex issue key
 	reg, _ := regexp.Compile(regexIssueKey)
+=======
+>>>>>>> 9df72e7d811d1d7b3eec0889431ee3f12a8761cb
 
 	switch payload.(type) {
 	case github.CreatePayload:
@@ -59,6 +81,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Println("Release")
 		fmt.Fprintf(w, string(enc))
 
+<<<<<<< HEAD
 	case github.PullRequestPayload:
 		pullRequest := payload.(github.PullRequestPayload)
 		// Do whatever you want from here...
@@ -111,9 +134,40 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		}
 		// issue, _, err := jiraClient.Issue.Get(issueKey, nil)
 		// fmt.Println("Pull Request", issue)
+=======
+	case github.CreatePayload:
+		createPayload := payload.(github.CreatePayload)
+		branchName := createPayload.Ref
+		fmt.Println(branchName)
+		splitedName := strings.Split(branchName, "_")
+		issueKey := splitedName[len(splitedName)-1]
+		issue, _, _ := client.Issue.Get(issueKey, nil)
+		if createPayload.RefType == "branch" {
+			transitions, _, _ := client.Issue.GetTransitions(issueKey)
+			for _, transition := range transitions {
+				if transition.To.Name == "In Progress" {
+					client.Issue.DoTransition(issue.ID, transition.ID)
+					fmt.Println("Transition")
+				}
+			}
+		}
+		fmt.Println("New Branch")
+>>>>>>> 9df72e7d811d1d7b3eec0889431ee3f12a8761cb
 
+	case github.PullRequestPayload:
 		fmt.Println("Pull Request")
-		fmt.Fprintf(w, string(enc))
+		pullRequest := payload.(github.PullRequestPayload)
+		reg, _ := regexp.Compile(regexProjectKey)
+		title := pullRequest.PullRequest.Title
+		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
+		issue, _, _ := client.Issue.Get(issueKey, nil)
+		transitions, _, _ := client.Issue.GetTransitions(issueKey)
+		for _, transition := range transitions {
+			if transition.To.Name == "In Review" {
+				client.Issue.DoTransition(issue.ID, transition.ID)
+				fmt.Println("Transition")
+			}
+		}
 
 	case github.PullRequestReviewPayload:
 		pullReqReview := payload.(github.PullRequestReviewPayload)

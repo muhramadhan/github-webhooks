@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -69,16 +70,19 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Println("New Branch")
 
 	case github.PullRequestPayload:
-		pullRequest := payload.(github.PullRequestPayload)
-		// Do whatever you want from here...
-		enc, err := json.MarshalIndent(pullRequest, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-
 		fmt.Println("Pull Request")
-		fmt.Fprintf(w, string(enc))
+		pullRequest := payload.(github.PullRequestPayload)
+		reg, _ := regexp.Compile(regexProjectKey)
+		title := pullRequest.PullRequest.Title
+		issueKey := strings.Replace(strings.Replace(reg.FindString(title), "[", "", -1), "]", "", -1)
+		issue, _, _ := client.Issue.Get(issueKey, nil)
+		transitions, _, _ := client.Issue.GetTransitions(issueKey)
+		for _, transition := range transitions {
+			if transition.To.Name == "In Review" {
+				client.Issue.DoTransition(issue.ID, transition.ID)
+				fmt.Println("Transition")
+			}
+		}
 
 	case github.PullRequestReviewPayload:
 		pullReqReview := payload.(github.PullRequestReviewPayload)

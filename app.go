@@ -65,7 +65,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 					client.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
 					comment := jira.Comment{
-						Body: "https://github.com/" + createPayload.Repository.FullName + "/tree/" + branchName,
+						Body: "Working Branch: " + createPayload.Repository.HTMLURL + "/tree/" + branchName,
 					}
 					client.Issue.AddComment(issue.ID, &comment)
 				}

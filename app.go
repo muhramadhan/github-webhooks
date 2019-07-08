@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,7 +31,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	client, _ := jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
 
 	hook, _ := github.New(github.Options.Secret("secret"))
-	payload, err := hook.Parse(r, github.ReleaseEvent, github.PullRequestEvent, github.CreateEvent, github.PushEvent)
+	payload, err := hook.Parse(r, github.PullRequestEvent, github.CreateEvent)
 	if err != nil {
 		if err == github.ErrEventNotFound {
 			// ok event wasn;t one of the ones asked to be parsed
@@ -40,16 +39,6 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	switch payload.(type) {
-	case github.ReleasePayload:
-		release := payload.(github.ReleasePayload)
-		// Do whatever you want from here...
-		enc, err := json.MarshalIndent(release, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-		fmt.Println("Release")
-		fmt.Fprintf(w, string(enc))
 
 	case github.CreatePayload:
 		createPayload := payload.(github.CreatePayload)
@@ -87,59 +76,6 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				fmt.Println("Transition")
 			}
 		}
-
-	case github.PullRequestReviewPayload:
-		pullReqReview := payload.(github.PullRequestReviewPayload)
-		enc, err := json.MarshalIndent(pullReqReview, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-		fmt.Println("Pull Request Review")
-		fmt.Fprintf(w, string(enc))
-
-	case github.RepositoryPayload:
-		repositoryPayload := payload.(github.RepositoryPayload)
-		enc, err := json.MarshalIndent(repositoryPayload, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-		fmt.Println("Repository Payload")
-		fmt.Fprintf(w, string(enc))
-
-	case github.PushPayload:
-		pushPayload := payload.(github.PushPayload)
-		enc, err := json.MarshalIndent(pushPayload, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-
-		fmt.Println("Push")
-		fmt.Fprintf(w, string(enc))
-
-	case github.MergedBy:
-		merge := payload.(github.MergedBy)
-		enc, err := json.MarshalIndent(merge, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-
-		fmt.Println("Merge")
-		fmt.Fprintf(w, string(enc))
-
-	case github.CommitCommentPayload:
-		commitComment := payload.(github.CommitCommentPayload)
-		enc, err := json.MarshalIndent(commitComment, "", "  ")
-		if err != nil {
-			fmt.Fprint(w, "invalidRequest")
-			return
-		}
-
-		fmt.Println("Commit Comment")
-		fmt.Fprintf(w, string(enc))
 	}
 
 }

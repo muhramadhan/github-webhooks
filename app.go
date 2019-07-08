@@ -56,10 +56,14 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		branchName := createPayload.Ref
 		reg, _ := regexp.Compile(regexProjectKey)
 		issueKey := strings.Replace(strings.Replace(reg.FindString(branchName), "[", "", -1), "]", "", -1)
+		issue, _, _ := client.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
 			transitions, _, _ := client.Issue.GetTransitions(issueKey)
-			for transition := range transitions {
-
+			for _, transition := range transitions {
+				if transition.To.Name == "In Progress" {
+					client.Issue.DoTransition(issue.ID, transition.ID)
+					fmt.Println("Transition")
+				}
 			}
 		}
 		fmt.Println("New Branch")

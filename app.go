@@ -57,6 +57,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if issueKey == "" {
 			return
 		}
+		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
 		fmt.Println("jiraClient = ", jiraClient)
 		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
 		if err != nil {
@@ -68,6 +69,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				fmt.Println(transition.To.Name)
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
+					bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
+					comment := jira.Comment{
+						Body: bodyComment,
+					}
+					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 		} else if pullRequest.Action == "closed" {
@@ -110,13 +116,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
 			transitions, _, _ := jiraClient.Issue.GetTransitions(issueKey)
-			BodyComment := fmt.Sprintf("Working Branch : [%s](%s)", createPayload.Ref, createPayload.Repository.HTMLURL+"/tree"+createPayload.Ref)
+			bodyComment := fmt.Sprintf("Working Branch: %s", createPayload.Repository.HTMLURL+"/tree/"+createPayload.Ref)
 			for _, transition := range transitions {
 				if transition.To.Name == "In Progress" {
 					jiraClient.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
 					comment := jira.Comment{
-						Body: BodyComment,
+						Body: bodyComment,
 					}
 					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}

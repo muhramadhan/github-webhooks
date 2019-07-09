@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -56,22 +57,24 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if issueKey == "" {
 			return
 		}
-
-		// Getting issue
-		issue, _, err := jiraClient.Issue.Get(issueKey, nil)
-		if err != nil {
-			fmt.Println("Error : ", err)
-		}
-
+		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
+		fmt.Println("jiraClient = ", jiraClient)
 		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
 		if err != nil {
 			fmt.Println("Error : ", err)
 		}
 		var transID string
+
 		if pullRequest.Action == "opened" {
+			fmt.Println("pull req open")
 			for _, transition := range transitions {
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
+					bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
+					comment := jira.Comment{
+						Body: bodyComment,
+					}
+					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 			// Getting the comment
@@ -103,7 +106,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}
 		} else if pullRequest.Action == "closed" {
-
+			fmt.Println("pull req merged")
 			// Getting the comment
 			currUser, _, err := jiraClient.User.GetSelf()
 			if err != nil {
@@ -118,7 +121,6 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 					}
 				}
 			}
-
 			if pullRequest.PullRequest.Merged {
 				for _, transition := range transitions {
 					if transition.To.Name == "Done" {
@@ -127,13 +129,19 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + " (Merged)\n",
+					Body: comment.Body + " (Merged)",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			} else {
+				fmt.Println("pull req reject")
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
+						updateComment := jira.Comment{
+							ID:   comment.ID,
+							Body: comment.Body + " (closed)",
+						}
+						jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
 				updateComment := jira.Comment{
@@ -148,6 +156,8 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			return
 		}
 		_, err = jiraClient.Issue.DoTransition(issueKey, transID)
+		fmt.Println("Transition")
+
 		if err != nil {
 			fmt.Fprint(w, "invalidRequest pertama: ", err)
 			return
@@ -168,13 +178,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
 			transitions, _, _ := jiraClient.Issue.GetTransitions(issueKey)
-			BodyComment := fmt.Sprintf("Working Branch : %s", createPayload.Repository.HTMLURL+"/tree/"+createPayload.Ref)
+			bodyComment := fmt.Sprintf("Working Branch: %s", createPayload.Repository.HTMLURL+"/tree/"+createPayload.Ref)
 			for _, transition := range transitions {
 				if transition.To.Name == "In Progress" {
 					jiraClient.Issue.DoTransition(issue.ID, transition.ID)
 					fmt.Println("Transition")
 					comment := jira.Comment{
-						Body: BodyComment,
+						Body: bodyComment,
 					}
 					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
@@ -239,9 +249,9 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func main() {
-	// port := ":" + os.Getenv("PORT")
+	port := ":" + os.Getenv("PORT")
 	InitJiraClient()
-	port := ":8080"
+	//port := ":8080"
 	router := httprouter.New()
 	fmt.Println("Running ...")
 	router.GET("/", Index)

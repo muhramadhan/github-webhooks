@@ -61,21 +61,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Println("jiraClient = ", jiraClient)
 		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error : ", err)
 		}
 		var transID string
-		var comment *jira.Comment
-		comments := issue.Fields.Comments.Comments
-		for _, c := range comments {
-			if strings.Contains(c.Body, "Pull Request") {
-				comment = c
-			}
-		}
 
 		if pullRequest.Action == "opened" {
 			fmt.Println("pull req open")
 			for _, transition := range transitions {
-				fmt.Println(transition.To.Name)
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
 					bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
@@ -85,19 +77,61 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 					jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
+			// Getting the comment
+			currUser, _, err := jiraClient.User.GetSelf()
+			if err != nil {
+				fmt.Println("Error : ", err)
+			}
+			var comment *jira.Comment
+			if len(issue.Fields.Comments.Comments) != 0 {
+				for _, commentLoop := range issue.Fields.Comments.Comments {
+					if currUser.AccountID == commentLoop.Author.AccountID && strings.Contains(commentLoop.Body, "Pull Request") {
+						comment = commentLoop
+					}
+				}
+			}
+			var BodyComment string
+			if comment == nil {
+				BodyComment = fmt.Sprintf("Pull Request:\n - %s\n", pullRequest.PullRequest.HTMLURL)
+				newComment := jira.Comment{
+					Body: BodyComment,
+				}
+				jiraClient.Issue.AddComment(issueKey, &newComment)
+			} else {
+				BodyComment = fmt.Sprintf("- %s\n", pullRequest.PullRequest.HTMLURL)
+				updateComment := jira.Comment{
+					ID:   comment.ID,
+					Body: comment.Body + BodyComment,
+				}
+				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
+			}
 		} else if pullRequest.Action == "closed" {
 			fmt.Println("pull req merged")
+			// Getting the comment
+			currUser, _, err := jiraClient.User.GetSelf()
+			if err != nil {
+				fmt.Println("Error : ", err)
+			}
+
+			var comment *jira.Comment
+			if len(issue.Fields.Comments.Comments) != 0 {
+				for _, commentLoop := range issue.Fields.Comments.Comments {
+					if currUser.AccountID == commentLoop.Author.AccountID && strings.Contains(commentLoop.Body, "Pull Request") {
+						comment = commentLoop
+					}
+				}
+			}
 			if pullRequest.PullRequest.Merged {
 				for _, transition := range transitions {
 					if transition.To.Name == "Done" {
 						transID = transition.ID
-						updateComment := jira.Comment{
-							ID:   comment.ID,
-							Body: comment.Body + " (merged)",
-						}
-						jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
+				updateComment := jira.Comment{
+					ID:   comment.ID,
+					Body: comment.Body + " (Merged)",
+				}
+				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			} else {
 				fmt.Println("pull req reject")
 				for _, transition := range transitions {
@@ -110,6 +144,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 						jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
+				updateComment := jira.Comment{
+					ID:   comment.ID,
+					Body: comment.Body + " (Closed)\n",
+				}
+				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}
 		}
 

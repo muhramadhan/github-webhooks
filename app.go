@@ -91,7 +91,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			}
 			var BodyComment string
 			if comment == nil {
-				BodyComment = fmt.Sprintf("Pull Request:\n - %s\n", pullRequest.PullRequest.HTMLURL)
+				BodyComment = fmt.Sprintf("Pull Request:\n - %s", pullRequest.PullRequest.HTMLURL)
 				newComment := jira.Comment{
 					Body: BodyComment,
 				}
@@ -99,13 +99,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			} else {
 				var updateComment jira.Comment
 				if pullRequest.Action == "open" {
-					BodyComment = fmt.Sprintf("- %s\n", pullRequest.PullRequest.HTMLURL)
+					BodyComment = fmt.Sprintf("\n- %s", pullRequest.PullRequest.HTMLURL)
 					updateComment = jira.Comment{
 						ID:   comment.ID,
 						Body: comment.Body + BodyComment,
 					}
 				} else if pullRequest.Action == "reopened" {
-					BodyComment = strings.Replace(comment.Body, pullRequest.PullRequest.HTMLURL+"]\n(Closed)", pullRequest.PullRequest.HTMLURL+"]\n", -1)
+					BodyComment = strings.Replace(comment.Body, pullRequest.PullRequest.HTMLURL+"] (Closed)", pullRequest.PullRequest.HTMLURL+"]\n", -1)
 					updateComment = jira.Comment{
 						ID:   comment.ID,
 						Body: BodyComment,
@@ -138,7 +138,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + "(Merged)\n",
+					Body: comment.Body + "(Merged)",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			} else {

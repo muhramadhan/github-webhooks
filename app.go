@@ -72,7 +72,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			}
 		}
 
-		if pullRequest.Action == "open" {
+		if pullRequest.Action == "opened" {
 			fmt.Println("pull req open")
 			for _, transition := range transitions {
 				fmt.Println(transition.To.Name)

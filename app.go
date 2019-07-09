@@ -19,8 +19,8 @@ var jiraClient *jira.Client
 
 func InitJiraClient() {
 	tp := jira.BasicAuthTransport{
-		Username: "ramadhanm1998@gmail.com",
-		Password: "icB26nXqVx90BRVTrxKKB68F",
+		Username: "hafizh203@gmail.com",
+		Password: "nwXanAF4FVQVToP4OjDN9808",
 	}
 
 	jiraClient, _ = jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
@@ -69,11 +69,6 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			for _, transition := range transitions {
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
-					// bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
-					// comment := jira.Comment{
-					// 	Body: bodyComment,
-					// }
-					// jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 			// Getting the comment
@@ -91,7 +86,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			}
 			var BodyComment string
 			if comment == nil {
-				BodyComment = fmt.Sprintf("Pull Request:\n - %s\n", pullRequest.PullRequest.HTMLURL)
+				BodyComment = fmt.Sprintf("Pull Request:\n - %s", pullRequest.PullRequest.HTMLURL)
 				newComment := jira.Comment{
 					Body: BodyComment,
 				}
@@ -99,13 +94,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			} else {
 				var updateComment jira.Comment
 				if pullRequest.Action == "open" {
-					BodyComment = fmt.Sprintf("- %s\n", pullRequest.PullRequest.HTMLURL)
+					BodyComment = fmt.Sprintf("\n- %s", pullRequest.PullRequest.HTMLURL)
 					updateComment = jira.Comment{
 						ID:   comment.ID,
 						Body: comment.Body + BodyComment,
 					}
 				} else if pullRequest.Action == "reopened" {
-					BodyComment = strings.Replace(comment.Body, pullRequest.PullRequest.HTMLURL+"]\n(Closed)", pullRequest.PullRequest.HTMLURL+"]\n", -1)
+					BodyComment = strings.Replace(comment.Body, pullRequest.PullRequest.HTMLURL+"] (Closed)", pullRequest.PullRequest.HTMLURL+"]\n", -1)
 					updateComment = jira.Comment{
 						ID:   comment.ID,
 						Body: BodyComment,
@@ -138,7 +133,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + "(Merged)\n",
+					Body: comment.Body + "(Merged)",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			} else {
@@ -146,16 +141,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
-						// updateComment := jira.Comment{
-						// 	ID:   comment.ID,
-						// 	Body: comment.Body + " (closed)",
-						// }
-						// jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + "(Closed)\n",
+					Body: comment.Body + " (Closed)",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}

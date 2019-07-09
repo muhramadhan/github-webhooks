@@ -69,11 +69,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			for _, transition := range transitions {
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
-					bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
-					comment := jira.Comment{
-						Body: bodyComment,
-					}
-					jiraClient.Issue.AddComment(issue.ID, &comment)
+					// bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
+					// comment := jira.Comment{
+					// 	Body: bodyComment,
+					// }
+					// jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 			// Getting the comment
@@ -105,10 +105,10 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 						Body: comment.Body + BodyComment,
 					}
 				} else if pullRequest.Action == "reopened" {
-					BodyComment = strings.Replace(comment.Body, pullRequest.PullRequest.HTMLURL+" (Closed)", pullRequest.PullRequest.HTMLURL, 1)
+					BodyComment = strings.Replace(comment.Body, pullRequest.PullRequest.HTMLURL+"]\n(Closed)", pullRequest.PullRequest.HTMLURL+"]\n", -1)
 					updateComment = jira.Comment{
 						ID:   comment.ID,
-						Body: comment.Body + BodyComment,
+						Body: BodyComment,
 					}
 				}
 
@@ -138,24 +138,24 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + " (Merged)\n",
+					Body: comment.Body + "(Merged)\n",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			} else {
 				fmt.Println("pull req reject")
-				// for _, transition := range transitions {
-				// 	if transition.To.Name == "In Progress" {
-				// 		transID = transition.ID
-				// 		updateComment := jira.Comment{
-				// 			ID:   comment.ID,
-				// 			Body: comment.Body + " (closed)",
-				// 		}
-				// 		jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
-				// 	}
-				// }
+				for _, transition := range transitions {
+					if transition.To.Name == "In Progress" {
+						transID = transition.ID
+						// updateComment := jira.Comment{
+						// 	ID:   comment.ID,
+						// 	Body: comment.Body + " (closed)",
+						// }
+						// jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
+					}
+				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + " (Closed)\n",
+					Body: comment.Body + "(Closed)\n",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}

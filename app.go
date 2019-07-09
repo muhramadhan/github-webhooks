@@ -56,32 +56,91 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if issueKey == "" {
 			return
 		}
-		fmt.Println("jiraClient = ", jiraClient)
+
+		// Getting issue
+		issue, _, err := jiraClient.Issue.Get(issueKey, nil)
+		if err != nil {
+			fmt.Println("Error : ", err)
+		}
+
 		transitions, _, err := jiraClient.Issue.GetTransitions(issueKey)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error : ", err)
 		}
 		var transID string
-		if pullRequest.Action == "open" {
+		if pullRequest.Action == "opened" {
 			for _, transition := range transitions {
-				fmt.Println(transition.To.Name)
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
 				}
 			}
+			// Getting the comment
+			currUser, _, err := jiraClient.User.GetSelf()
+			if err != nil {
+				fmt.Println("Error : ", err)
+			}
+			var comment *jira.Comment
+			if len(issue.Fields.Comments.Comments) != 0 {
+				for _, commentLoop := range issue.Fields.Comments.Comments {
+					if currUser.AccountID == commentLoop.Author.AccountID && strings.Contains(commentLoop.Body, "Pull Request") {
+						comment = commentLoop
+					}
+				}
+			}
+			var BodyComment string
+			if comment == nil {
+				BodyComment = fmt.Sprintf("Pull Request:\n - %s\n", pullRequest.PullRequest.HTMLURL)
+				newComment := jira.Comment{
+					Body: BodyComment,
+				}
+				jiraClient.Issue.AddComment(issueKey, &newComment)
+			} else {
+				BodyComment = fmt.Sprintf("- %s\n", pullRequest.PullRequest.HTMLURL)
+				updateComment := jira.Comment{
+					ID:   comment.ID,
+					Body: comment.Body + BodyComment,
+				}
+				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
+			}
 		} else if pullRequest.Action == "closed" {
+
+			// Getting the comment
+			currUser, _, err := jiraClient.User.GetSelf()
+			if err != nil {
+				fmt.Println("Error : ", err)
+			}
+
+			var comment *jira.Comment
+			if len(issue.Fields.Comments.Comments) != 0 {
+				for _, commentLoop := range issue.Fields.Comments.Comments {
+					if currUser.AccountID == commentLoop.Author.AccountID && strings.Contains(commentLoop.Body, "Pull Request") {
+						comment = commentLoop
+					}
+				}
+			}
+
 			if pullRequest.PullRequest.Merged {
 				for _, transition := range transitions {
 					if transition.To.Name == "Done" {
 						transID = transition.ID
 					}
 				}
+				updateComment := jira.Comment{
+					ID:   comment.ID,
+					Body: comment.Body + " (Merged)\n",
+				}
+				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			} else {
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
 					}
 				}
+				updateComment := jira.Comment{
+					ID:   comment.ID,
+					Body: comment.Body + " (Closed)\n",
+				}
+				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}
 		}
 
@@ -109,7 +168,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		issue, _, _ := jiraClient.Issue.Get(issueKey, nil)
 		if createPayload.RefType == "branch" {
 			transitions, _, _ := jiraClient.Issue.GetTransitions(issueKey)
-			BodyComment := fmt.Sprintf("Working Branch : %s", createPayload.Ref, createPayload.Repository.HTMLURL+"/tree/"+createPayload.Ref)
+			BodyComment := fmt.Sprintf("Working Branch : %s", createPayload.Repository.HTMLURL+"/tree/"+createPayload.Ref)
 			for _, transition := range transitions {
 				if transition.To.Name == "In Progress" {
 					jiraClient.Issue.DoTransition(issue.ID, transition.ID)

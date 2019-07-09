@@ -87,13 +87,13 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			}
 			var BodyComment string
 			if comment == nil {
-				BodyComment = fmt.Sprintf("Pull Request:\n - %s\n", pullRequest.PullRequest.HTMLURL)
+				BodyComment = fmt.Sprintf("Pull Request:\n - %s", pullRequest.PullRequest.HTMLURL)
 				newComment := jira.Comment{
 					Body: BodyComment,
 				}
 				jiraClient.Issue.AddComment(issueKey, &newComment)
 			} else {
-				BodyComment = fmt.Sprintf("- %s\n", pullRequest.PullRequest.HTMLURL)
+				BodyComment = fmt.Sprintf("\n- %s", pullRequest.PullRequest.HTMLURL)
 				updateComment := jira.Comment{
 					ID:   comment.ID,
 					Body: comment.Body + BodyComment,
@@ -132,16 +132,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
-						updateComment := jira.Comment{
-							ID:   comment.ID,
-							Body: comment.Body + " (closed)",
-						}
-						jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + " (Closed)\n",
+					Body: comment.Body + " (Closed)",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}

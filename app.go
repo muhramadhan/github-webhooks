@@ -73,6 +73,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		}
 
 		if pullRequest.Action == "open" {
+			fmt.Println("pull req open")
 			for _, transition := range transitions {
 				fmt.Println(transition.To.Name)
 				if transition.To.Name == "In Review" {
@@ -85,6 +86,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				}
 			}
 		} else if pullRequest.Action == "closed" {
+			fmt.Println("pull req merged")
 			if pullRequest.PullRequest.Merged {
 				for _, transition := range transitions {
 					if transition.To.Name == "Done" {
@@ -97,6 +99,7 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 					}
 				}
 			} else {
+				fmt.Println("pull req reject")
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
@@ -114,6 +117,8 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			return
 		}
 		_, err = jiraClient.Issue.DoTransition(issueKey, transID)
+		fmt.Println("Transition")
+
 		if err != nil {
 			fmt.Fprint(w, "invalidRequest pertama: ", err)
 			return

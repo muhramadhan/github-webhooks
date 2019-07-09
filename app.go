@@ -64,6 +64,14 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			fmt.Println(err)
 		}
 		var transID string
+		var comment *jira.Comment
+		comments := issue.Fields.Comments.Comments
+		for _, c := range comments {
+			if strings.Contains(c.Body, "Pull Request") {
+				comment = c
+			}
+		}
+
 		if pullRequest.Action == "open" {
 			for _, transition := range transitions {
 				fmt.Println(transition.To.Name)
@@ -81,12 +89,22 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				for _, transition := range transitions {
 					if transition.To.Name == "Done" {
 						transID = transition.ID
+						updateComment := jira.Comment{
+							ID:   comment.ID,
+							Body: comment.Body + " (merged)",
+						}
+						jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
 			} else {
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
+						updateComment := jira.Comment{
+							ID:   comment.ID,
+							Body: comment.Body + " (closed)",
+						}
+						jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
 			}

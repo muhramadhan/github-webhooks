@@ -19,8 +19,8 @@ var jiraClient *jira.Client
 
 func InitJiraClient() {
 	tp := jira.BasicAuthTransport{
-		Username: "ramadhanm1998@gmail.com",
-		Password: "icB26nXqVx90BRVTrxKKB68F",
+		Username: "hafizh203@gmail.com",
+		Password: "nwXanAF4FVQVToP4OjDN9808",
 	}
 
 	jiraClient, _ = jira.NewClient(tp.Client(), "https://m-f-hafizh.atlassian.net/")
@@ -69,11 +69,6 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			for _, transition := range transitions {
 				if transition.To.Name == "In Review" {
 					transID = transition.ID
-					// bodyComment := fmt.Sprintf("Pull Request: %s", pullRequest.PullRequest.URL)
-					// comment := jira.Comment{
-					// 	Body: bodyComment,
-					// }
-					// jiraClient.Issue.AddComment(issue.ID, &comment)
 				}
 			}
 			// Getting the comment
@@ -146,16 +141,11 @@ func handlers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				for _, transition := range transitions {
 					if transition.To.Name == "In Progress" {
 						transID = transition.ID
-						// updateComment := jira.Comment{
-						// 	ID:   comment.ID,
-						// 	Body: comment.Body + " (closed)",
-						// }
-						// jiraClient.Issue.UpdateComment(issue.ID, &updateComment)
 					}
 				}
 				updateComment := jira.Comment{
 					ID:   comment.ID,
-					Body: comment.Body + "(Closed)\n",
+					Body: comment.Body + " (Closed)",
 				}
 				jiraClient.Issue.UpdateComment(issueKey, &updateComment)
 			}
